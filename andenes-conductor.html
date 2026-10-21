@@ -64,6 +64,12 @@ dt{color:var(--mut)}dd{margin:0;font-weight:700}
 .bar input{width:80px}
 .empty{color:var(--mut);padding:18px;text-align:center;border:1.5px dashed var(--line);border-radius:8px}
 .hide{display:none}
+.pill.bad{background:var(--badbg);color:var(--bad)}
+.alarma{background:var(--badbg);border:2px solid var(--bad);border-radius:12px;padding:18px;margin:14px 0;color:var(--bad)}
+.alarma p{margin:4px 0 0;color:var(--tx)}
+.d button[data-c]{background:var(--bad);color:#fff;font-weight:700;width:100%;padding:8px}
+.d button.lnk{display:block;border:0;padding:8px 0 0;text-decoration:underline;color:var(--mut)}
+.av{color:var(--bad);font-weight:700;font-size:.78rem}
 </style>
 </head>
 <body>
@@ -94,7 +100,8 @@ async function api(a,d){
   const s=lload();
   if(a==='add'){const hoy=new Date().toDateString();s.q.push({...d,turno:s.q.filter(x=>new Date(x.llegada).toDateString()===hoy).length+1,llegada:new Date().toISOString(),estado:'ESPERA',anden:null})}
   else if(a==='upd'){const r=s.q.find(x=>x.id===d.id);if(r){
-    if(d.estado==='ASIGNADO'){if(s.q.some(x=>x.estado==='ASIGNADO'&&x.anden===d.anden))alert('Ese andén ya está ocupado.');else{r.estado='ASIGNADO';r.anden=d.anden;r.asignado=new Date().toISOString()}}
+    if(d.estado==='ASIGNADO'){if(s.q.some(x=>(x.estado==='ASIGNADO'||x.estado==='CULMINADA')&&x.anden===d.anden))alert('Ese andén ya está ocupado.');else{r.estado='ASIGNADO';r.anden=d.anden;r.asignado=new Date().toISOString()}}
+    else if(d.estado==='CULMINADA'){r.estado='CULMINADA';r.culminada=new Date().toISOString()}
     else{r.estado='FINALIZADO';r.liberado=new Date().toISOString()}}}
   else if(a==='cfg')s.n=d.n;
   lsave(s);S=s;return S}
@@ -163,13 +170,13 @@ function viewConductor(){
   });
 }
 function viewTicket(r){
-  const asig=r.estado==='ASIGNADO', fin=r.estado==='FINALIZADO';
+  const cul=r.estado==='CULMINADA', asig=r.estado==='ASIGNADO'||cul, fin=r.estado==='FINALIZADO';
   $('#app').innerHTML=`<div class="card ticket">
     <div class="turno">Turno N.º ${r.turno} · llegada ${hora(r.llegada)}</div>
-    ${asig?`<div class="anden-box"><div>Diríjase al andén</div><div class="big">${r.anden}</div></div>`
+    ${cul?`<div class="alarma"><div class="big" style="font-size:2rem">CARGA CULMINADA</div><p>Retire su vehículo del andén ${r.anden}.</p><button class="btn sec" id="rep" type="button">Escuchar aviso de nuevo</button></div>`:asig?`<div class="anden-box"><div>Diríjase al andén</div><div class="big">${r.anden}</div><p class="sub" style="margin:0">Mantenga esta pantalla abierta: sonará un aviso cuando termine su carga.</p></div>`
     :fin?`<div class="big" style="font-size:1.6rem">Carga finalizada</div><p class="sub">Buen viaje.</p>`
     :`<div class="big" style="font-size:1.7rem">Espere su asignación</div><p class="sub">Esta pantalla se actualiza sola cuando el equipo le asigne un andén.</p>`}
-    <span class="pill ${asig||fin?'ok':''}">${asig?'ANDÉN ASIGNADO':fin?'FINALIZADO':'EN ESPERA'}</span>
+    <span class="pill ${cul?'bad':asig||fin?'ok':''}">${cul?'CARGA CULMINADA':asig?'ANDÉN ASIGNADO':fin?'FINALIZADO':'EN ESPERA'}</span>
     <dl><dt>Conductor</dt><dd>${esc(r.nombres)} ${esc(r.apellidos)}</dd>
     <dt>${r.tipoDoc==='CHILENO'?'RUT':'Pasaporte'}</dt><dd>${esc(r.doc)}</dd>
     <dt>Tractor</dt><dd>${esc(r.tractor)}</dd><dt>Rampla</dt><dd>${esc(r.rampla)}</dd>
@@ -177,6 +184,8 @@ function viewTicket(r){
     ${fin?`<button class="btn" id="nuevo">Nuevo registro</button>`:`<button class="btn sec" id="nuevo">Este no soy yo · registrar otro conductor</button>`}
   </div>`;
   $('#nuevo').onclick=()=>{setMine(null);render()};
+  const rp=$('#rep');if(rp)rp.onclick=()=>alarma();
+  pedirWake();
 }
 
 /* ---------- Router y sincronización ---------- */
@@ -188,9 +197,19 @@ function render(){
   isPanel()?viewPanel():viewConductor();
   if(!API)$('#app').insertAdjacentHTML('afterbegin','<p class="err">Modo local: los registros no se comparten entre dispositivos. Falta pegar la URL de Apps Script en la constante API.</p>');
 }
-function beep(){try{const c=new (window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=880;g.gain.value=.2;o.start();o.stop(c.currentTime+.4)}catch(e){}}
+let AC=null, WL=null, memR=null;
+function unlock(){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume()}catch(e){}}
+['click','touchstart','keydown'].forEach(ev=>addEventListener(ev,unlock,{passive:true}));
+function tono(f,t0,d){try{unlock();const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime+t0;o.type='square';o.frequency.value=f;o.connect(g);g.connect(AC.destination);g.gain.setValueAtTime(.25,t);g.gain.setValueAtTime(0,t+d);o.start(t);o.stop(t+d+.02)}catch(e){}}
+function beep(){tono(880,0,.4)}
+function alarma(){for(let i=0;i<6;i++)tono(i%2?1100:880,i,.6);navigator.vibrate&&navigator.vibrate([600,400,600,400,600,400,600,400,600,400,600])}
+function ringKey(){try{return localStorage.getItem('andenes_ring')}catch(e){return memR}}
+function setRing(v){memR=v;try{localStorage.setItem('andenes_ring',v)}catch(e){}}
+async function pedirWake(){try{if('wakeLock' in navigator&&!WL){WL=await navigator.wakeLock.request('screen');WL.addEventListener('release',()=>{WL=null})}}catch(e){}}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){pedirWake();tick()}});
 function alerta(){
   if(!(isPanel()&&unlocked)){seen=null;return}
+  pedirWake();
   const ids=S.q.filter(x=>x.estado==='ESPERA').map(x=>x.id);
   if(seen&&ids.some(i=>!seen.has(i))){beep();navigator.vibrate&&navigator.vibrate([200,100,200]);document.title='(NUEVO CONDUCTOR) '+T}
   seen=new Set(ids)}
@@ -202,6 +221,7 @@ function tick(){
     if(!ok)return;
     const me=S.q.find(x=>x.id===getMine());
     if(!isPanel()&&me&&ant==='ESPERA'&&me.estado==='ASIGNADO'){navigator.vibrate&&navigator.vibrate([300,150,300,150,300]);beep()}
+    if(!isPanel()&&me&&me.estado==='CULMINADA'&&ringKey()!==me.id){setRing(me.id);alarma()}
     const a=document.activeElement;if(a&&a.matches('input,select'))return;
     if(sig()!==last&&(isPanel()&&unlocked||!isPanel()&&me))render()})}
 addEventListener('focus',()=>{document.title=T});
