@@ -75,7 +75,7 @@ dt{color:var(--mut)}dd{margin:0;font-weight:700}
 <script>
 const KEY='andenes_v1', MINE='andenes_mi_id';
 const CTS=['LA SERENA','VALDIVIA','OSORNO','PUERTO MONTT','LOS ÁNGELES','CHILLÁN','TEMUCO','CONCEPCIÓN','CHILE EXPRESS','BLUE EXPRESS','CURICÓ','RANCAGUA','COPIAPÓ','CALAMA','TALCA','COYHAIQUE','ARICA','CORDILLERA','CASTRO','ANTOFAGASTA','VALPARAÍSO'];
-const API=''; // PEGAR AQUÍ la URL de la aplicación web de Apps Script (termina en /exec)
+const API='https://script.google.com/macros/s/AKfycbwcOvjYE48HpuWj_HPx2oCLJw9yrui-TjgInmkWpyg27jD0kwphiuQOFA1ipkP1gtuu/exec'; // PEGAR AQUÍ la URL de la aplicación web de Apps Script (termina en /exec)
 let S={q:[],n:12}, memM=null, unlocked=false, seen=null, last='';
 const T=document.title;
 function lload(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s)return s}catch(e){}return S}
