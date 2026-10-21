@@ -51,7 +51,7 @@ dt{color:var(--mut)}dd{margin:0;font-weight:700}
 .q .a{display:flex;gap:8px}
 .q select{flex:1;padding:10px}
 .q button{padding:10px 16px;border:0;border-radius:8px;background:var(--blue);color:#fff;font-weight:700;cursor:pointer;font-family:inherit}
-.dock{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.dock{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .d{border:1.5px solid var(--line);border-radius:8px;padding:10px;min-height:92px;background:var(--card)}
 .d.free{border-color:var(--ok);background:var(--okbg)}.d.free .st{color:var(--ok)}
 .d.busy{border-color:var(--bad);background:var(--badbg)}.d.busy .st{color:var(--bad)}
@@ -64,6 +64,12 @@ dt{color:var(--mut)}dd{margin:0;font-weight:700}
 .bar input{width:80px}
 .empty{color:var(--mut);padding:18px;text-align:center;border:1.5px dashed var(--line);border-radius:8px}
 .hide{display:none}
+.pill.bad{background:var(--badbg);color:var(--bad)}
+.alarma{background:var(--badbg);border:2px solid var(--bad);border-radius:12px;padding:18px;margin:14px 0;color:var(--bad)}
+.alarma p{margin:4px 0 0;color:var(--tx)}
+.d button[data-c]{background:var(--bad);color:#fff;font-weight:700;width:100%;padding:8px}
+.d button.lnk{display:block;border:0;padding:8px 0 0;text-decoration:underline;color:var(--mut)}
+.av{color:var(--bad);font-weight:700;font-size:.78rem}
 </style>
 </head>
 <body>
@@ -94,7 +100,8 @@ async function api(a,d){
   const s=lload();
   if(a==='add'){const hoy=new Date().toDateString();s.q.push({...d,turno:s.q.filter(x=>new Date(x.llegada).toDateString()===hoy).length+1,llegada:new Date().toISOString(),estado:'ESPERA',anden:null})}
   else if(a==='upd'){const r=s.q.find(x=>x.id===d.id);if(r){
-    if(d.estado==='ASIGNADO'){if(s.q.some(x=>x.estado==='ASIGNADO'&&x.anden===d.anden))alert('Ese andén ya está ocupado.');else{r.estado='ASIGNADO';r.anden=d.anden;r.asignado=new Date().toISOString()}}
+    if(d.estado==='ASIGNADO'){if(s.q.some(x=>(x.estado==='ASIGNADO'||x.estado==='CULMINADA')&&x.anden===d.anden))alert('Ese andén ya está ocupado.');else{r.estado='ASIGNADO';r.anden=d.anden;r.asignado=new Date().toISOString()}}
+    else if(d.estado==='CULMINADA'){r.estado='CULMINADA';r.culminada=new Date().toISOString()}
     else{r.estado='FINALIZADO';r.liberado=new Date().toISOString()}}}
   else if(a==='cfg')s.n=d.n;
   lsave(s);S=s;return S}
@@ -120,7 +127,7 @@ function viewPanel(){
   }
   const s=load(), hoy=new Date().toDateString();
   const esp=s.q.filter(x=>x.estado==='ESPERA').sort((a,b)=>a.llegada<b.llegada?-1:1);
-  const ocup=n=>s.q.find(x=>x.estado==='ASIGNADO'&&x.anden===n);
+  const ocup=n=>s.q.find(x=>(x.estado==='ASIGNADO'||x.estado==='CULMINADA')&&x.anden===n);
   const libres=[];for(let i=1;i<=s.n;i++)if(!ocup(i))libres.push(i);
   const fin=s.q.filter(x=>x.estado==='FINALIZADO'&&new Date(x.llegada).toDateString()===hoy).length;
   $('#app').innerHTML=`<div class="bar">
@@ -135,13 +142,14 @@ function viewPanel(){
       <div class="a"><select aria-label="Andén para turno ${r.turno}" data-s="${r.id}">${libres.length?libres.map(n=>`<option value="${n}">Andén ${n}</option>`).join(''):'<option value="">Sin andenes libres</option>'}</select>
       <button type="button" data-a="${r.id}" ${libres.length?'':'disabled'}>Asignar</button></div></div>`).join('')
     :'<div class="empty">No hay conductores en espera. Los registros nuevos aparecen aquí.</div>'}</section>
-    <section><h2>Andenes</h2><p class="sub">Libere el andén al terminar la carga.</p><div class="dock">
-    ${Array.from({length:s.n},(_,i)=>{const o=ocup(i+1);return o?`<div class="d busy"><b>${i+1}</b><span class="st">OCUPADO</span><span>${esc(o.tractor)} / ${esc(o.rampla)}</span><span>CT ${esc(o.region)}</span><button type="button" data-l="${o.id}">Liberar</button></div>`:`<div class="d free"><b>${i+1}</b><span class="st">LIBRE</span></div>`}).join('')}
+    <section><h2>Andenes</h2><p class="sub">Al terminar la carga, avise al conductor y luego libere el andén.</p><div class="dock">
+    ${Array.from({length:s.n},(_,i)=>{const o=ocup(i+1);return o?`<div class="d busy"><b>${i+1}</b><span class="st">OCUPADO</span><span>${esc(o.tractor)} / ${esc(o.rampla)}</span><span>CT ${esc(o.region)}</span>${o.estado==='CULMINADA'?`<span class="av">AVISO ENVIADO</span><button type="button" data-l="${o.id}">Liberar</button>`:`<button type="button" data-c="${o.id}">Carga culminada</button><button type="button" class="lnk" data-l="${o.id}">Liberar sin aviso</button>`}</div>`:`<div class="d free"><b>${i+1}</b><span class="st">LIBRE</span></div>`}).join('')}
     </div></section></div>`;
   document.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{
     const id=b.dataset.a, n=+document.querySelector(`[data-s="${id}"]`).value;
     if(!n)return;b.disabled=true;
     api('upd',{id,estado:'ASIGNADO',anden:n}).then(render).catch(()=>{alert('No se pudo asignar. Revise la conexión.');render()})});
+  document.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{if(!confirm('¿Avisar al conductor que su carga culminó? Sonará la alarma en su celular.'))return;b.disabled=true;api('upd',{id:b.dataset.c,estado:'CULMINADA'}).then(render).catch(()=>{alert('No se pudo enviar el aviso. Revise la conexión.');render()})});
   document.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{b.disabled=true;api('upd',{id:b.dataset.l,estado:'FINALIZADO'}).then(render).catch(()=>{alert('No se pudo liberar. Revise la conexión.');render()})});
   $('#nan').onchange=e=>api('cfg',{n:Math.min(60,Math.max(1,+e.target.value||12))}).then(render);
   $('#csv').onclick=()=>{
@@ -159,9 +167,19 @@ function render(){
   isPanel()?viewPanel():viewConductor();
   if(!API)$('#app').insertAdjacentHTML('afterbegin','<p class="err">Modo local: los registros no se comparten entre dispositivos. Falta pegar la URL de Apps Script en la constante API.</p>');
 }
-function beep(){try{const c=new (window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=880;g.gain.value=.2;o.start();o.stop(c.currentTime+.4)}catch(e){}}
+let AC=null, WL=null, memR=null;
+function unlock(){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume()}catch(e){}}
+['click','touchstart','keydown'].forEach(ev=>addEventListener(ev,unlock,{passive:true}));
+function tono(f,t0,d){try{unlock();const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime+t0;o.type='square';o.frequency.value=f;o.connect(g);g.connect(AC.destination);g.gain.setValueAtTime(.25,t);g.gain.setValueAtTime(0,t+d);o.start(t);o.stop(t+d+.02)}catch(e){}}
+function beep(){tono(880,0,.4)}
+function alarma(){for(let i=0;i<6;i++)tono(i%2?1100:880,i,.6);navigator.vibrate&&navigator.vibrate([600,400,600,400,600,400,600,400,600,400,600])}
+function ringKey(){try{return localStorage.getItem('andenes_ring')}catch(e){return memR}}
+function setRing(v){memR=v;try{localStorage.setItem('andenes_ring',v)}catch(e){}}
+async function pedirWake(){try{if('wakeLock' in navigator&&!WL){WL=await navigator.wakeLock.request('screen');WL.addEventListener('release',()=>{WL=null})}}catch(e){}}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){pedirWake();tick()}});
 function alerta(){
   if(!(isPanel()&&unlocked)){seen=null;return}
+  pedirWake();
   const ids=S.q.filter(x=>x.estado==='ESPERA').map(x=>x.id);
   if(seen&&ids.some(i=>!seen.has(i))){beep();navigator.vibrate&&navigator.vibrate([200,100,200]);document.title='(NUEVO CONDUCTOR) '+T}
   seen=new Set(ids)}
@@ -173,6 +191,7 @@ function tick(){
     if(!ok)return;
     const me=S.q.find(x=>x.id===getMine());
     if(!isPanel()&&me&&ant==='ESPERA'&&me.estado==='ASIGNADO'){navigator.vibrate&&navigator.vibrate([300,150,300,150,300]);beep()}
+    if(!isPanel()&&me&&me.estado==='CULMINADA'&&ringKey()!==me.id){setRing(me.id);alarma()}
     const a=document.activeElement;if(a&&a.matches('input,select'))return;
     if(sig()!==last&&(isPanel()&&unlocked||!isPanel()&&me))render()})}
 addEventListener('focus',()=>{document.title=T});
