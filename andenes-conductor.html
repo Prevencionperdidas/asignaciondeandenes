@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Asignación de andenes · CD El Sauce</title>
+<style>
+:root{--bg:#F2F4F7;--card:#fff;--tx:#14202E;--mut:#5B6776;--line:#D5DBE3;--blue:#0058A3;--yel:#FFDB00;--onyel:#14202E;--ok:#16794C;--okbg:#E2F4EA;--bad:#C62828;--badbg:#FDE7E7;--err:#B3261E;color-scheme:light;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0E141C;--card:#18212C;--tx:#EAF0F7;--mut:#9AA7B6;--line:#2C3947;--blue:#4C9BE0;--ok:#5FD69B;--okbg:#12301F;--bad:#FF8A80;--badbg:#3A1A1A;--err:#FF8A80;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0E141C;--card:#18212C;--tx:#EAF0F7;--mut:#9AA7B6;--line:#2C3947;--blue:#4C9BE0;--ok:#5FD69B;--okbg:#12301F;--bad:#FF8A80;--badbg:#3A1A1A;--err:#FF8A80;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--tx);font:16px/1.45 Verdana,"Segoe UI",system-ui,sans-serif;min-height:100%}
+header{background:#0058A3;color:#fff;padding:14px 16px;border-bottom:4px solid var(--yel);display:flex;justify-content:space-between;align-items:center;gap:12px}
+header h1{font-size:1.05rem;margin:0;font-weight:700}
+header small{display:block;font-weight:400;opacity:.85;font-size:.78rem}
+header button{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.6);border-radius:6px;padding:8px 10px;font-size:.8rem;cursor:pointer}
+main{max-width:980px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px}
+h2{font-size:1.15rem;margin:0 0 4px}
+.sub{color:var(--mut);margin:0 0 16px;font-size:.92rem}
+label{display:block;font-weight:700;font-size:.88rem;margin:14px 0 6px}
+input,select{width:100%;padding:13px 12px;font-size:1rem;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--tx);font-family:inherit}
+input[type=text]{text-transform:uppercase}
+input:focus,select:focus,button:focus-visible{outline:3px solid var(--yel);outline-offset:1px;border-color:var(--blue)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:520px){.row{grid-template-columns:1fr}}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1.5px solid var(--blue);border-radius:8px;overflow:hidden}
+.seg input{position:absolute;opacity:0;width:1px;height:1px}
+.seg label{margin:0;padding:12px 8px;text-align:center;cursor:pointer;font-size:.88rem;color:var(--blue)}
+.seg input:checked+label{background:var(--blue);color:#fff}
+.seg input:focus-visible+label{outline:3px solid var(--yel);outline-offset:-3px}
+.err{color:var(--err);font-size:.82rem;min-height:1.1em;margin-top:4px}
+.btn{width:100%;margin-top:20px;padding:15px;border:0;border-radius:8px;background:var(--yel);color:var(--onyel);font-weight:700;font-size:1.05rem;cursor:pointer;font-family:inherit}
+.btn.sec{background:transparent;color:var(--blue);border:1.5px solid var(--blue);margin-top:10px;font-size:.92rem;padding:11px}
+.ticket{text-align:center}
+.turno{font-size:.9rem;color:var(--mut)}
+.big{font-size:3.2rem;font-weight:700;line-height:1.1;margin:6px 0}
+.pill{display:inline-block;padding:6px 14px;border-radius:999px;font-weight:700;font-size:.9rem;background:var(--yel);color:var(--onyel)}
+.pill.ok{background:var(--okbg);color:var(--ok)}
+.anden-box{background:var(--okbg);border:2px solid var(--ok);border-radius:12px;padding:18px;margin:14px 0}
+.anden-box .big{color:var(--ok);font-size:4rem}
+dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;text-align:left;margin:16px 0 0;font-size:.92rem}
+dt{color:var(--mut)}dd{margin:0;font-weight:700}
+.grid2{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;align-items:start}
+@media (max-width:760px){.grid2{grid-template-columns:1fr}}
+.q{border:1px solid var(--line);border-left:5px solid var(--yel);border-radius:8px;padding:12px;margin-bottom:10px;background:var(--card)}
+.q b.t{font-size:1.05rem}
+.q .m{color:var(--mut);font-size:.84rem;margin:2px 0 8px}
+.q .a{display:flex;gap:8px}
+.q select{flex:1;padding:10px}
+.q button{padding:10px 16px;border:0;border-radius:8px;background:var(--blue);color:#fff;font-weight:700;cursor:pointer;font-family:inherit}
+.dock{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.d{border:1.5px solid var(--line);border-radius:8px;padding:10px;min-height:92px;background:var(--card)}
+.d.free{border-color:var(--ok);background:var(--okbg)}.d.free .st{color:var(--ok)}
+.d.busy{border-color:var(--bad);background:var(--badbg)}.d.busy .st{color:var(--bad)}
+.d .st{font-weight:700;font-size:.78rem;letter-spacing:.04em}
+.d b{font-size:1.2rem}
+.d span{display:block;font-size:.78rem;color:var(--mut)}
+.d button{margin-top:6px;padding:5px 8px;font-size:.76rem;border:1px solid var(--bad);background:transparent;color:var(--bad);border-radius:6px;cursor:pointer}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+.bar select,.bar input{width:auto;padding:9px 10px;font-size:.88rem}
+.bar input{width:80px}
+.empty{color:var(--mut);padding:18px;text-align:center;border:1.5px dashed var(--line);border-radius:8px}
+.hide{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>Asignación de andenes<small>CD El Sauce · Transportes CT</small></h1>
+</header>
+<main id="app"></main>
+
+<script>
+const KEY='andenes_v1', MINE='andenes_mi_id';
+const CTS=['LA SERENA','VALDIVIA','OSORNO','PUERTO MONTT','LOS ÁNGELES','CHILLÁN','TEMUCO','CONCEPCIÓN','CHILE EXPRESS','BLUE EXPRESS','CURICÓ','RANCAGUA','COPIAPÓ','CALAMA','TALCA','COYHAIQUE','ARICA','CORDILLERA','CASTRO','ANTOFAGASTA','VALPARAÍSO'];
+const API=''; // PEGAR AQUÍ la URL de la aplicación web de Apps Script (termina en /exec)
+let S={q:[],n:12}, memM=null, unlocked=false, seen=null, last='';
+const T=document.title;
+function lload(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s)return s}catch(e){}return S}
+function lsave(s){try{localStorage.setItem(KEY,JSON.stringify(s))}catch(e){}}
+function load(){return S}
+function jsonp(p){return new Promise((res,rej)=>{
+  const cb='cb'+Date.now()+Math.floor(Math.random()*1e4), sc=document.createElement('script');
+  const clean=()=>{clearTimeout(t);delete window[cb];sc.remove()};
+  const t=setTimeout(()=>{clean();rej(new Error('tiempo agotado'))},12000);
+  window[cb]=d=>{clean();res(d)};
+  sc.onerror=()=>{clean();rej(new Error('sin conexión'))};
+  sc.src=API+'?'+new URLSearchParams({...p,cb}).toString();document.head.appendChild(sc)})}
+async function api(a,d){
+  d=d||{};
+  if(API){const r=await jsonp({a,d:JSON.stringify(d)});if(r.error)throw new Error(r.error);S={q:r.q,n:r.n};if(r.warn)alert(r.warn);return S}
+  const s=lload();
+  if(a==='add'){const hoy=new Date().toDateString();s.q.push({...d,turno:s.q.filter(x=>new Date(x.llegada).toDateString()===hoy).length+1,llegada:new Date().toISOString(),estado:'ESPERA',anden:null})}
+  else if(a==='upd'){const r=s.q.find(x=>x.id===d.id);if(r){
+    if(d.estado==='ASIGNADO'){if(s.q.some(x=>x.estado==='ASIGNADO'&&x.anden===d.anden))alert('Ese andén ya está ocupado.');else{r.estado='ASIGNADO';r.anden=d.anden;r.asignado=new Date().toISOString()}}
+    else{r.estado='FINALIZADO';r.liberado=new Date().toISOString()}}}
+  else if(a==='cfg')s.n=d.n;
+  lsave(s);S=s;return S}
+function getMine(){try{return localStorage.getItem(MINE)}catch(e){return memM}}
+function setMine(v){memM=v;try{v?localStorage.setItem(MINE,v):localStorage.removeItem(MINE)}catch(e){}}
+const $=s=>document.querySelector(s);
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const hora=iso=>new Date(iso).toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
+const mins=iso=>Math.max(0,Math.round((Date.now()-new Date(iso))/60000));
+
+function dvRut(b){let s=0,m=2;for(let i=b.length-1;i>=0;i--){s+=+b[i]*m;m=m==7?2:m+1}const r=11-s%11;return r==11?'0':r==10?'K':String(r)}
+function fmtRut(v){const c=v.replace(/[^0-9kK]/g,'').toUpperCase();if(c.length<2)return c;const b=c.slice(0,-1);return b.replace(/\B(?=(\d{3})+(?!\d))/g,'.')+'-'+c.slice(-1)}
+function rutOk(v){const c=v.replace(/[^0-9kK]/g,'').toUpperCase();if(c.length<8||c.length>9)return false;return dvRut(c.slice(0,-1))===c.slice(-1)}
+
+/* ---------- Vista conductor ---------- */
+function viewConductor(){
+  const s=load(), me=s.q.find(x=>x.id===getMine());
+  if(me) return viewTicket(me);
+  $('#app').innerHTML=`<form class="card" id="f" novalidate>
+    <h2>Registro de llegada</h2>
+    <p class="sub">Complete sus datos. El equipo de transporte le asignará un andén.</p>
+    <div class="row">
+      <div><label for="nom">Nombres</label><input type="text" id="nom" autocomplete="given-name"><div class="err" data-e="nom"></div></div>
+      <div><label for="ape">Apellidos</label><input type="text" id="ape" autocomplete="family-name"><div class="err" data-e="ape"></div></div>
+    </div>
+    <label id="tl">Tipo de documento</label>
+    <div class="seg" role="radiogroup" aria-labelledby="tl">
+      <input type="radio" name="td" id="td1" value="CHILENO" checked><label for="td1">Chileno (RUT)</label>
+      <input type="radio" name="td" id="td2" value="EXTRANJERO"><label for="td2">Extranjero / Pasaporte</label>
+    </div>
+    <label for="doc" id="dl">RUT</label>
+    <input type="text" id="doc" inputmode="text" autocomplete="off" placeholder="12.345.678-9">
+    <div class="err" data-e="doc"></div>
+    <div class="row">
+      <div><label for="trac">Patente del tractor</label><input type="text" id="trac" maxlength="7" autocapitalize="characters" placeholder="ABCD12"><div class="err" data-e="trac"></div></div>
+      <div><label for="ramp">Patente de la rampla</label><input type="text" id="ramp" maxlength="7" autocapitalize="characters" placeholder="AB1234"><div class="err" data-e="ramp"></div></div>
+    </div>
+    <label for="reg">CT al que viene a buscar la carga</label>
+    <select id="reg"><option value="">Seleccione un CT</option>${CTS.map(r=>`<option>${r}</option>`).join('')}</select>
+    <div class="err" data-e="reg"></div>
+    <div class="err" id="fe"></div><button class="btn" type="submit">Registrar llegada</button>
+  </form>`;
+  const doc=$('#doc');
+  document.querySelectorAll('input[type=text]').forEach(i=>i.addEventListener('input',()=>{const p=i.selectionStart;i.value=i.value.toUpperCase();try{i.setSelectionRange(p,p)}catch(e){}}));
+  ['trac','ramp'].forEach(id=>$('#'+id).addEventListener('input',e=>e.target.value=e.target.value.replace(/[^A-Z0-9]/g,'')));
+  const tipo=()=>document.querySelector('input[name=td]:checked').value;
+  document.querySelectorAll('input[name=td]').forEach(r=>r.addEventListener('change',()=>{
+    const ch=tipo()==='CHILENO';$('#dl').textContent=ch?'RUT':'Número de pasaporte o documento';doc.placeholder=ch?'12.345.678-9':'N.º DE DOCUMENTO';doc.value=''}));
+  doc.addEventListener('blur',()=>{if(tipo()==='CHILENO')doc.value=fmtRut(doc.value)});
+  $('#f').addEventListener('submit',e=>{
+    e.preventDefault();
+    const v={nom:$('#nom').value.trim(),ape:$('#ape').value.trim(),doc:doc.value.trim(),trac:$('#trac').value.trim(),ramp:$('#ramp').value.trim(),reg:$('#reg').value};
+    const er={};
+    if(v.nom.length<2)er.nom='Ingrese sus nombres.';
+    if(v.ape.length<2)er.ape='Ingrese sus apellidos.';
+    if(tipo()==='CHILENO'){v.doc=fmtRut(v.doc);if(!rutOk(v.doc))er.doc='RUT no válido. Revise el número y el dígito verificador.'}
+    else if(v.doc.length<4)er.doc='Ingrese su pasaporte o documento.';
+    if(!/^[A-Z0-9]{5,7}$/.test(v.trac))er.trac='Patente de 5 a 7 caracteres.';
+    if(!/^[A-Z0-9]{5,7}$/.test(v.ramp))er.ramp='Patente de 5 a 7 caracteres.';
+    if(!v.reg)er.reg='Seleccione el CT.';
+    document.querySelectorAll('[data-e]').forEach(d=>d.textContent=er[d.dataset.e]||'');
+    const first=Object.keys(er)[0];if(first){$('#'+first).focus();return}
+    const rec={id:'C'+Date.now()+Math.floor(Math.random()*1000),nombres:v.nom,apellidos:v.ape,tipoDoc:tipo(),doc:v.doc,tractor:v.trac,rampla:v.ramp,region:v.reg};
+    const btn=$('#f .btn');btn.disabled=true;btn.textContent='Enviando…';
+    api('add',rec).then(()=>{setMine(rec.id);render()}).catch(()=>{btn.disabled=false;btn.textContent='Registrar llegada';$('#fe').textContent='No se pudo enviar. Revise su conexión e intente de nuevo.'});
+  });
+}
+function viewTicket(r){
+  const asig=r.estado==='ASIGNADO', fin=r.estado==='FINALIZADO';
+  $('#app').innerHTML=`<div class="card ticket">
+    <div class="turno">Turno N.º ${r.turno} · llegada ${hora(r.llegada)}</div>
+    ${asig?`<div class="anden-box"><div>Diríjase al andén</div><div class="big">${r.anden}</div></div>`
+    :fin?`<div class="big" style="font-size:1.6rem">Carga finalizada</div><p class="sub">Buen viaje.</p>`
+    :`<div class="big" style="font-size:1.7rem">Espere su asignación</div><p class="sub">Esta pantalla se actualiza sola cuando el equipo le asigne un andén.</p>`}
+    <span class="pill ${asig||fin?'ok':''}">${asig?'ANDÉN ASIGNADO':fin?'FINALIZADO':'EN ESPERA'}</span>
+    <dl><dt>Conductor</dt><dd>${esc(r.nombres)} ${esc(r.apellidos)}</dd>
+    <dt>${r.tipoDoc==='CHILENO'?'RUT':'Pasaporte'}</dt><dd>${esc(r.doc)}</dd>
+    <dt>Tractor</dt><dd>${esc(r.tractor)}</dd><dt>Rampla</dt><dd>${esc(r.rampla)}</dd>
+    <dt>CT</dt><dd>${esc(r.region)}</dd></dl>
+    ${fin?`<button class="btn" id="nuevo">Nuevo registro</button>`:`<button class="btn sec" id="nuevo">Este no soy yo · registrar otro conductor</button>`}
+  </div>`;
+  $('#nuevo').onclick=()=>{setMine(null);render()};
+}
+
+/* ---------- Router y sincronización ---------- */
+const MODE='conductor';
+function isPanel(){return MODE==='control'}
+const sig=()=>JSON.stringify(S)+Math.floor(Date.now()/60000);
+function render(){
+  last=sig();
+  isPanel()?viewPanel():viewConductor();
+  if(!API)$('#app').insertAdjacentHTML('afterbegin','<p class="err">Modo local: los registros no se comparten entre dispositivos. Falta pegar la URL de Apps Script en la constante API.</p>');
+}
+function beep(){try{const c=new (window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=880;g.gain.value=.2;o.start();o.stop(c.currentTime+.4)}catch(e){}}
+function alerta(){
+  if(!(isPanel()&&unlocked)){seen=null;return}
+  const ids=S.q.filter(x=>x.estado==='ESPERA').map(x=>x.id);
+  if(seen&&ids.some(i=>!seen.has(i))){beep();navigator.vibrate&&navigator.vibrate([200,100,200]);document.title='(NUEVO CONDUCTOR) '+T}
+  seen=new Set(ids)}
+function refresh(){return api('list').then(()=>{alerta();return true}).catch(()=>false)}
+function tick(){
+  if(document.hidden)return;
+  const ant=(S.q.find(x=>x.id===getMine())||{}).estado;
+  refresh().then(ok=>{
+    if(!ok)return;
+    const me=S.q.find(x=>x.id===getMine());
+    if(!isPanel()&&me&&ant==='ESPERA'&&me.estado==='ASIGNADO'){navigator.vibrate&&navigator.vibrate([300,150,300,150,300]);beep()}
+    const a=document.activeElement;if(a&&a.matches('input,select'))return;
+    if(sig()!==last&&(isPanel()&&unlocked||!isPanel()&&me))render()})}
+addEventListener('focus',()=>{document.title=T});
+setInterval(tick,4000);
+refresh().then(render);
+</script>
+</body>
+</html>
