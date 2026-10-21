@@ -70,6 +70,10 @@ dt{color:var(--mut)}dd{margin:0;font-weight:700}
 .d button[data-c]{background:var(--bad);color:#fff;font-weight:700;width:100%;padding:8px}
 .d button.lnk{display:block;border:0;padding:8px 0 0;text-decoration:underline;color:var(--mut)}
 .av{color:var(--bad);font-weight:700;font-size:.78rem}
+.rc{color:var(--ok);font-weight:700;font-size:.78rem}
+.alarma{text-align:left}.alarma .big{text-align:center}
+.alarma ol{margin:8px 0;padding-left:22px;color:var(--tx);font-size:.95rem}.alarma li{margin:6px 0}
+.recibido{background:var(--okbg);color:var(--ok);border:2px solid var(--ok);border-radius:8px;padding:12px;font-weight:700;text-align:center;margin-top:12px}
 </style>
 </head>
 <body>
@@ -101,7 +105,8 @@ async function api(a,d){
   if(a==='add'){const hoy=new Date().toDateString();s.q.push({...d,turno:s.q.filter(x=>new Date(x.llegada).toDateString()===hoy).length+1,llegada:new Date().toISOString(),estado:'ESPERA',anden:null})}
   else if(a==='upd'){const r=s.q.find(x=>x.id===d.id);if(r){
     if(d.estado==='ASIGNADO'){if(s.q.some(x=>(x.estado==='ASIGNADO'||x.estado==='CULMINADA')&&x.anden===d.anden))alert('Ese andén ya está ocupado.');else{r.estado='ASIGNADO';r.anden=d.anden;r.asignado=new Date().toISOString()}}
-    else if(d.estado==='CULMINADA'){r.estado='CULMINADA';r.culminada=new Date().toISOString()}
+    else if(d.estado==='CULMINADA'){r.estado='CULMINADA';r.culminada=new Date().toISOString();r.recibido=null}
+    else if(d.recibido){r.recibido=new Date().toISOString()}
     else{r.estado='FINALIZADO';r.liberado=new Date().toISOString()}}}
   else if(a==='cfg')s.n=d.n;
   lsave(s);S=s;return S}
@@ -173,7 +178,16 @@ function viewTicket(r){
   const cul=r.estado==='CULMINADA', asig=r.estado==='ASIGNADO'||cul, fin=r.estado==='FINALIZADO';
   $('#app').innerHTML=`<div class="card ticket">
     <div class="turno">Turno N.º ${r.turno} · llegada ${hora(r.llegada)}</div>
-    ${cul?`<div class="alarma"><div class="big" style="font-size:2rem">CARGA CULMINADA</div><p>Retire su vehículo del andén ${r.anden}.</p><button class="btn sec" id="rep" type="button">Escuchar aviso de nuevo</button></div>`:asig?`<div class="anden-box"><div>Diríjase al andén</div><div class="big">${r.anden}</div><p class="sub" style="margin:0">Mantenga esta pantalla abierta: sonará un aviso cuando termine su carga.</p></div>`
+    ${cul?`<div class="alarma"><div class="big" style="font-size:2rem">CARGA CULMINADA</div><p style="text-align:center">Andén ${r.anden}</p>
+    <h3 style="margin:14px 0 4px;font-size:1rem;color:var(--tx)">Mensaje para los conductores</h3>
+    <p>Una vez finalizada la carga, antes de retirar su vehículo, por favor:</p>
+    <ol><li>Verifique que el semáforo del andén donde está aculatado indique luz verde hacia usted.</li>
+    <li>Confirme que no haya personal operativo dentro del contenedor ni sobre o cerca de su máquina.</li>
+    <li>Desprenda con cuidado la rampla del andén para continuar con el proceso de sellado.</li>
+    <li>Notifique en la aplicación que completó estos pasos. Así, el coordinador podrá agilizar su guía sistémica y autorizar su retiro.</li></ol>
+    <p><b>Retire su vehículo únicamente cuando haya completado estas verificaciones y recibido la autorización correspondiente.</b></p>
+    ${r.recibido?`<div class="recibido">✔ AVISO CONFIRMADO A LAS ${hora(r.recibido)}</div>`:`<button class="btn" id="rec" type="button">RECIBÍ EL AVISO</button>`}
+    <button class="btn sec" id="rep" type="button">Escuchar alarma de nuevo</button></div>`:asig?`<div class="anden-box"><div>Diríjase al andén</div><div class="big">${r.anden}</div><p class="sub" style="margin:0">Mantenga esta pantalla abierta: sonará un aviso cuando termine su carga.</p></div>`
     :fin?`<div class="big" style="font-size:1.6rem">Carga finalizada</div><p class="sub">Buen viaje.</p>`
     :`<div class="big" style="font-size:1.7rem">Espere su asignación</div><p class="sub">Esta pantalla se actualiza sola cuando el equipo le asigne un andén.</p>`}
     <span class="pill ${cul?'bad':asig||fin?'ok':''}">${cul?'CARGA CULMINADA':asig?'ANDÉN ASIGNADO':fin?'FINALIZADO':'EN ESPERA'}</span>
@@ -185,6 +199,7 @@ function viewTicket(r){
   </div>`;
   $('#nuevo').onclick=()=>{setMine(null);render()};
   const rp=$('#rep');if(rp)rp.onclick=()=>alarma();
+  const rc=$('#rec');if(rc)rc.onclick=()=>{rc.disabled=true;rc.textContent='Enviando…';api('upd',{id:r.id,recibido:true}).then(render).catch(()=>{alert('No se pudo enviar la confirmación. Intente de nuevo.');render()})};
   pedirWake();
 }
 
@@ -197,7 +212,7 @@ function render(){
   isPanel()?viewPanel():viewConductor();
   if(!API)$('#app').insertAdjacentHTML('afterbegin','<p class="err">Modo local: los registros no se comparten entre dispositivos. Falta pegar la URL de Apps Script en la constante API.</p>');
 }
-let AC=null, WL=null, memR=null;
+let AC=null, WL=null, memR=null, recSeen=null;
 function unlock(){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume()}catch(e){}}
 ['click','touchstart','keydown'].forEach(ev=>addEventListener(ev,unlock,{passive:true}));
 function tono(f,t0,d){try{unlock();const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime+t0;o.type='square';o.frequency.value=f;o.connect(g);g.connect(AC.destination);g.gain.setValueAtTime(.25,t);g.gain.setValueAtTime(0,t+d);o.start(t);o.stop(t+d+.02)}catch(e){}}
@@ -208,8 +223,11 @@ function setRing(v){memR=v;try{localStorage.setItem('andenes_ring',v)}catch(e){}
 async function pedirWake(){try{if('wakeLock' in navigator&&!WL){WL=await navigator.wakeLock.request('screen');WL.addEventListener('release',()=>{WL=null})}}catch(e){}}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){pedirWake();tick()}});
 function alerta(){
-  if(!(isPanel()&&unlocked)){seen=null;return}
+  if(!(isPanel()&&unlocked)){seen=null;recSeen=null;return}
   pedirWake();
+  const rc=S.q.filter(x=>x.recibido).map(x=>x.id);
+  if(recSeen&&rc.some(i=>!recSeen.has(i))){beep();navigator.vibrate&&navigator.vibrate([200,100,200])}
+  recSeen=new Set(rc);
   const ids=S.q.filter(x=>x.estado==='ESPERA').map(x=>x.id);
   if(seen&&ids.some(i=>!seen.has(i))){beep();navigator.vibrate&&navigator.vibrate([200,100,200]);document.title='(NUEVO CONDUCTOR) '+T}
   seen=new Set(ids)}
