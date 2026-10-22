@@ -88,6 +88,9 @@ const CTS=['LA SERENA','VALDIVIA','OSORNO','PUERTO MONTT','LOS ÁNGELES','CHILL�
 const API='https://script.google.com/macros/s/AKfycbwcOvjYE48HpuWj_HPx2oCLJw9yrui-TjgInmkWpyg27jD0kwphiuQOFA1ipkP1gtuu/exec'; // PEGAR AQUÍ la URL de la aplicación web de Apps Script (termina en /exec)
 let S={q:[],n:12}, memM=null, unlocked=false, seen=null, last='';
 const T=document.title;
+// Andenes reales del CD (agregar o quitar aquí si cambian)
+const ANDENES=[1,2,3,4,5,6].map(n=>({id:n,nave:3,lado:'A'}));
+const andenLabel=n=>{const a=ANDENES.find(x=>x.id==n);return a?`Nave ${a.nave}, Andén ${a.id}, Lado ${a.lado}`:(n?`Andén ${n}`:'—')};
 function lload(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s)return s}catch(e){}return S}
 function lsave(s){try{localStorage.setItem(KEY,JSON.stringify(s))}catch(e){}}
 function load(){return S}
@@ -178,7 +181,7 @@ function viewTicket(r){
   const cul=r.estado==='CULMINADA', asig=r.estado==='ASIGNADO'||cul, fin=r.estado==='FINALIZADO';
   $('#app').innerHTML=`<div class="card ticket">
     <div class="turno">Turno N.º ${r.turno} · llegada ${hora(r.llegada)}</div>
-    ${cul?`<div class="alarma"><div class="big" style="font-size:2rem">CARGA CULMINADA</div><p style="text-align:center">Andén ${r.anden}</p>
+    ${cul?`<div class="alarma"><div class="big" style="font-size:2rem">CARGA CULMINADA</div><p style="text-align:center"><b>${andenLabel(r.anden)}</b></p>
     <h3 style="margin:14px 0 4px;font-size:1rem;color:var(--tx)">Mensaje para los conductores</h3>
     <p>Una vez finalizada la carga, antes de retirar su vehículo, por favor:</p>
     <ol><li>Verifique que el semáforo del andén donde está aculatado indique luz verde hacia usted.</li>
@@ -187,7 +190,7 @@ function viewTicket(r){
     <li>Notifique en la aplicación que completó estos pasos. Así, el coordinador podrá agilizar su guía sistémica y autorizar su retiro.</li></ol>
     <p><b>Retire su vehículo únicamente cuando haya completado estas verificaciones y recibido la autorización correspondiente.</b></p>
     ${r.recibido?`<div class="recibido">✔ AVISO CONFIRMADO A LAS ${hora(r.recibido)}</div>`:`<button class="btn" id="rec" type="button">RECIBÍ EL AVISO</button>`}
-    <button class="btn sec" id="rep" type="button">Escuchar alarma de nuevo</button></div>`:asig?`<div class="anden-box"><div>Diríjase al andén</div><div class="big">${r.anden}</div><p class="sub" style="margin:0">Mantenga esta pantalla abierta: sonará un aviso cuando termine su carga.</p></div>`
+    <button class="btn sec" id="rep" type="button">Escuchar alarma de nuevo</button></div>`:asig?`<div class="anden-box"><div>Diríjase a</div><div class="big" style="font-size:2.2rem">${andenLabel(r.anden)}</div><p class="sub" style="margin:0">Mantenga esta pantalla abierta: sonará un aviso cuando termine su carga.</p></div>`
     :fin?`<div class="big" style="font-size:1.6rem">Carga finalizada</div><p class="sub">Buen viaje.</p>`
     :`<div class="big" style="font-size:1.7rem">Espere su asignación</div><p class="sub">Esta pantalla se actualiza sola cuando el equipo le asigne un andén.</p>`}
     <span class="pill ${cul?'bad':asig||fin?'ok':''}">${cul?'CARGA CULMINADA':asig?'ANDÉN ASIGNADO':fin?'FINALIZADO':'EN ESPERA'}</span>
