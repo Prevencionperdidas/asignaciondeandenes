@@ -106,6 +106,9 @@ const CTS=['LA SERENA','VALDIVIA','OSORNO','PUERTO MONTT','LOS ÁNGELES','CHILL�
 const API='https://script.google.com/macros/s/AKfycbwcOvjYE48HpuWj_HPx2oCLJw9yrui-TjgInmkWpyg27jD0kwphiuQOFA1ipkP1gtuu/exec'; // PEGAR AQUÍ la URL de la aplicación web de Apps Script (termina en /exec)
 let S={q:[],n:12}, memM=null, unlocked=false, seen=null, last='';
 const T=document.title;
+// Andenes reales del CD (agregar o quitar aquí si cambian)
+const ANDENES=[1,2,3,4,5,6].map(n=>({id:n,nave:3,lado:'A'}));
+const andenLabel=n=>{const a=ANDENES.find(x=>x.id==n);return a?`Nave ${a.nave}, Andén ${a.id}, Lado ${a.lado}`:(n?`Andén ${n}`:'—')};
 function lload(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s)return s}catch(e){}return S}
 function lsave(s){try{localStorage.setItem(KEY,JSON.stringify(s))}catch(e){}}
 function load(){return S}
@@ -153,22 +156,22 @@ function viewPanel(){
   const s=load(), hoy=new Date().toDateString();
   const esp=s.q.filter(x=>x.estado==='ESPERA').sort((a,b)=>a.llegada<b.llegada?-1:1);
   const ocup=n=>s.q.find(x=>(x.estado==='ASIGNADO'||x.estado==='CULMINADA')&&x.anden===n);
-  const libres=[];for(let i=1;i<=s.n;i++)if(!ocup(i))libres.push(i);
+  const libres=ANDENES.map(a=>a.id).filter(n=>!ocup(n));
   const fin=s.q.filter(x=>x.estado==='FINALIZADO'&&new Date(x.llegada).toDateString()===hoy).length;
   $('#app').innerHTML=`${tabs()}<div class="bar">
-    <b>${esp.length} en espera · ${s.n-libres.length} andenes ocupados · ${fin} finalizados hoy${(()=>{const n=s.q.filter(x=>x.estado==='ASIGNADO'&&x.asignado&&mins(x.asignado)>=UMBRAL).length;return n?` · <span class="warn">${n} con más de ${UMBRAL} min en carga</span>`:''})()}</b>
+    <b>${esp.length} en espera · ${ANDENES.length-libres.length} de ${ANDENES.length} andenes ocupados · ${fin} finalizados hoy${(()=>{const n=s.q.filter(x=>x.estado==='ASIGNADO'&&x.asignado&&mins(x.asignado)>=UMBRAL).length;return n?` · <span class="warn">${n} con más de ${UMBRAL} min en carga</span>`:''})()}</b>
     <span style="flex:1"></span>
-    <label for="nan" style="margin:0;font-weight:400">Andenes</label><input type="number" id="nan" min="1" max="60" value="${s.n}">
+    
     <button class="btn sec" style="width:auto;margin:0" id="csv">Descargar CSV</button></div>
   <div class="grid2">
     <section><h2>Conductores en espera</h2><p class="sub">Orden de llegada.</p>
     ${esp.length?esp.map(r=>`<div class="q"><b class="t">Turno ${r.turno} · ${esc(r.nombres)} ${esc(r.apellidos)}</b>
       <div class="m">${esc(r.region)} · Tractor ${esc(r.tractor)} · Rampla ${esc(r.rampla)}<br>${r.tipoDoc==='CHILENO'?'RUT':'Pasaporte'} ${esc(r.doc)} · llegó ${hora(r.llegada)} (${mins(r.llegada)} min)</div>
-      <div class="a"><select aria-label="Andén para turno ${r.turno}" data-s="${r.id}">${libres.length?libres.map(n=>`<option value="${n}">Andén ${n}</option>`).join(''):'<option value="">Sin andenes libres</option>'}</select>
+      <div class="a"><select aria-label="Andén para turno ${r.turno}" data-s="${r.id}">${libres.length?libres.map(n=>`<option value="${n}">${andenLabel(n)}</option>`).join(''):'<option value="">Sin andenes libres</option>'}</select>
       <button type="button" data-a="${r.id}" ${libres.length?'':'disabled'}>Asignar</button></div></div>`).join('')
     :'<div class="empty">No hay conductores en espera. Los registros nuevos aparecen aquí.</div>'}</section>
     <section><h2>Andenes</h2><p class="sub">Al terminar la carga, avise al conductor y luego libere el andén.</p><div class="dock">
-    ${Array.from({length:s.n},(_,i)=>{const o=ocup(i+1);return o?`<div class="d busy"><b>${i+1}</b><span class="st">OCUPADO</span><span>${esc(o.tractor)} / ${esc(o.rampla)}</span><span>CT ${esc(o.region)}</span>${tiempoCarga(o)}${o.estado==='CULMINADA'?`${o.recibido?`<span class="rc">✔ RECIBIDO ${hora(o.recibido)}</span>`:`<span class="av">AVISO ENVIADO · SIN CONFIRMAR</span>`}<button type="button" data-l="${o.id}">Liberar</button>`:`<button type="button" data-c="${o.id}">Carga culminada</button><button type="button" class="lnk" data-l="${o.id}">Liberar sin aviso</button>`}</div>`:`<div class="d free"><b>${i+1}</b><span class="st">LIBRE</span></div>`}).join('')}
+    ${ANDENES.map(a=>{const o=ocup(a.id);return o?`<div class="d busy"><b>Andén ${a.id}</b><span>Nave ${a.nave}, Lado ${a.lado}</span><span class="st">OCUPADO</span><span>${esc(o.tractor)} / ${esc(o.rampla)}</span><span>CT ${esc(o.region)}</span>${tiempoCarga(o)}${o.estado==='CULMINADA'?`${o.recibido?`<span class="rc">✔ RECIBIDO ${hora(o.recibido)}</span>`:`<span class="av">AVISO ENVIADO · SIN CONFIRMAR</span>`}<button type="button" data-l="${o.id}">Liberar</button>`:`<button type="button" data-c="${o.id}">Carga culminada</button><button type="button" class="lnk" data-l="${o.id}">Liberar sin aviso</button>`}</div>`:`<div class="d free"><b>Andén ${a.id}</b><span>Nave ${a.nave}, Lado ${a.lado}</span><span class="st">LIBRE</span></div>`}).join('')}
     </div></section></div>`;
   bindTabs();
   document.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{
@@ -177,7 +180,6 @@ function viewPanel(){
     api('upd',{id,estado:'ASIGNADO',anden:n}).then(render).catch(()=>{alert('No se pudo asignar. Revise la conexión.');render()})});
   document.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{if(!confirm('¿Avisar al conductor que su carga culminó? Sonará la alarma en su celular.'))return;b.disabled=true;api('upd',{id:b.dataset.c,estado:'CULMINADA'}).then(render).catch(()=>{alert('No se pudo enviar el aviso. Revise la conexión.');render()})});
   document.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{b.disabled=true;api('upd',{id:b.dataset.l,estado:'FINALIZADO'}).then(render).catch(()=>{alert('No se pudo liberar. Revise la conexión.');render()})});
-  $('#nan').onchange=e=>api('cfg',{n:Math.min(60,Math.max(1,+e.target.value||12))}).then(render);
   $('#csv').onclick=()=>{
     const h=['TURNO','NOMBRES','APELLIDOS','TIPO DOC','DOCUMENTO','TRACTOR','RAMPLA','CT','LLEGADA','ESTADO','ANDEN'];
     const rows=s.q.map(r=>[r.turno,r.nombres,r.apellidos,r.tipoDoc,r.doc,r.tractor,r.rampla,r.region,r.llegada,r.estado,r.anden||''].map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(','));
@@ -215,7 +217,7 @@ function filtReg(){const q=rf.q.trim().toUpperCase();return regRows.filter(r=>!q
 function pintaReg(){
   const t=$('#rtab');if(!t)return;const rows=filtReg();
   const avg=f=>{const v=rows.map(f).filter(x=>x!=null);return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length):null};
-  t.innerHTML=rows.length?`<p class="sub">${rows.length} registro(s) · Promedio SLA Asignación: <b>${fmtDur(avg(r=>dur(r.llegada,r.asignado)))||'—'}</b> · Promedio SLA Carga: <b>${fmtDur(avg(r=>dur(r.asignado,r.culminada)))||'—'}</b><br><span class="leg">Semáforo SLA Carga: <i class="sem g"></i>menos de ${UMBRAL} min<i class="sem y"></i>${UMBRAL} a ${UMBRAL*2-1} min<i class="sem r"></i>${UMBRAL*2} min o más</span></p><div class="tw"><table><thead><tr><th>Fecha</th><th>Nombres</th><th>Apellidos</th><th>RUT / Doc.</th><th>PPU tractor</th><th>PPU rampla</th><th>CT</th><th>Andén</th><th>Hora registro</th><th>Hora asignación</th><th>Hora carga finalizada</th><th>Hora cierre</th><th>Estado</th><th>SLA Asignación</th><th>SLA Carga</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${fch(r.llegada)}</td><td>${esc(r.nombres)}</td><td>${esc(r.apellidos)}</td><td>${esc(r.doc)}</td><td>${esc(r.tractor)}</td><td>${esc(r.rampla)}</td><td>${esc(r.region)}</td><td>${r.anden||'—'}</td><td>${hm(r.llegada)||'—'}</td><td>${hm(r.asignado)||'—'}</td><td>${hm(r.culminada)||'—'}</td><td>${hm(r.liberado)||'—'}</td><td>${EST[r.estado]||esc(r.estado)}</td><td>${fmtDur(dur(r.llegada,r.asignado))||'—'}</td><td>${slaCarga(r)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No hay registros en ese rango.</div>'}
+  t.innerHTML=rows.length?`<p class="sub">${rows.length} registro(s) · Promedio SLA Asignación: <b>${fmtDur(avg(r=>dur(r.llegada,r.asignado)))||'—'}</b> · Promedio SLA Carga: <b>${fmtDur(avg(r=>dur(r.asignado,r.culminada)))||'—'}</b><br><span class="leg">Semáforo SLA Carga: <i class="sem g"></i>menos de ${UMBRAL} min<i class="sem y"></i>${UMBRAL} a ${UMBRAL*2-1} min<i class="sem r"></i>${UMBRAL*2} min o más</span></p><div class="tw"><table><thead><tr><th>Fecha</th><th>Nombres</th><th>Apellidos</th><th>RUT / Doc.</th><th>PPU tractor</th><th>PPU rampla</th><th>CT</th><th>Andén</th><th>Hora registro</th><th>Hora asignación</th><th>Hora carga finalizada</th><th>Hora cierre</th><th>Estado</th><th>SLA Asignación</th><th>SLA Carga</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${fch(r.llegada)}</td><td>${esc(r.nombres)}</td><td>${esc(r.apellidos)}</td><td>${esc(r.doc)}</td><td>${esc(r.tractor)}</td><td>${esc(r.rampla)}</td><td>${esc(r.region)}</td><td>${r.anden?andenLabel(r.anden):'—'}</td><td>${hm(r.llegada)||'—'}</td><td>${hm(r.asignado)||'—'}</td><td>${hm(r.culminada)||'—'}</td><td>${hm(r.liberado)||'—'}</td><td>${EST[r.estado]||esc(r.estado)}</td><td>${fmtDur(dur(r.llegada,r.asignado))||'—'}</td><td>${slaCarga(r)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No hay registros en ese rango.</div>'}
 async function cargarReg(){
   try{
     if(API){const r=await jsonp({a:'hist',d:JSON.stringify({desde:rf.d1,hasta:rf.d2})});if(r.error)throw new Error(r.error);regRows=r.q}
@@ -236,7 +238,7 @@ function viewReg(){
   $('#bq').oninput=()=>{rf.q=$('#bq').value;pintaReg()};
   $('#bcsv').onclick=()=>{
     const h=['FECHA','NOMBRES','APELLIDOS','TIPO DOC','RUT / DOCUMENTO','PPU TRACTOR','PPU RAMPLA','CT','ANDÉN','HORA REGISTRO','HORA ASIGNACIÓN','HORA CARGA FINALIZADA','HORA CIERRE','ESTADO','SLA ASIGNACIÓN (MIN)','SLA CARGA (MIN)','SEMÁFORO SLA CARGA'];
-    const rows=filtReg().map(r=>[fch(r.llegada),r.nombres,r.apellidos,r.tipoDoc,r.doc,r.tractor,r.rampla,r.region,r.anden||'',hm(r.llegada,1),hm(r.asignado,1),hm(r.culminada,1),hm(r.liberado,1),EST[r.estado]||r.estado,dm(r.llegada,r.asignado),dm(r.asignado,r.culminada),semCsv(r)].map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(','));
+    const rows=filtReg().map(r=>[fch(r.llegada),r.nombres,r.apellidos,r.tipoDoc,r.doc,r.tractor,r.rampla,r.region,r.anden?andenLabel(r.anden):'',hm(r.llegada,1),hm(r.asignado,1),hm(r.culminada,1),hm(r.liberado,1),EST[r.estado]||r.estado,dm(r.llegada,r.asignado),dm(r.asignado,r.culminada),semCsv(r)].map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(','));
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+[h.join(','),...rows].join('\n')],{type:'text/csv'}));a.download='registros-andenes-'+rf.d1+'_'+rf.d2+'.csv';a.click()};
   cargarReg();
 }
