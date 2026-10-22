@@ -74,6 +74,17 @@ dt{color:var(--mut)}dd{margin:0;font-weight:700}
 .tabs{display:flex;gap:8px;margin-bottom:14px}
 .tabs button{flex:1;padding:12px;border:1.5px solid var(--blue);background:transparent;color:var(--blue);border-radius:8px;font-weight:700;cursor:pointer;font-family:inherit}
 .tabs button.on{background:var(--blue);color:#fff}
+.sem{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:6px;border:1px solid rgba(0,0,0,.3);vertical-align:-1px}
+.sem.g{background:#2E9E5B}.sem.y{background:#F2B705}.sem.r{background:#D93025}
+.tc{display:block;font-size:.78rem;font-weight:700;margin-top:4px;color:var(--tx)}
+.warn{color:var(--bad)}
+.leg{font-size:.8rem}.leg .sem{margin-left:10px}.leg .sem:first-child{margin-left:0}
+@media (min-width:1024px){
+main.wide{max-width:min(1800px,96vw)}
+main.wide table{font-size:.92rem}
+main.wide th,main.wide td{padding:11px 16px}
+main.wide #bq{width:340px!important}
+}
 .tw{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--card)}
 table{border-collapse:collapse;width:100%;font-size:.84rem}
 th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
@@ -137,6 +148,7 @@ function viewPanel(){
     $('#pf').onsubmit=e=>{e.preventDefault();if($('#pin').value===PIN){unlocked=true;render()}else{$('#pe').textContent='PIN incorrecto.';$('#pin').value=''}};
     $('#pin').focus();return;
   }
+  $('#app').classList.toggle('wide',tab==='reg');
   if(tab==='reg')return viewReg();
   const s=load(), hoy=new Date().toDateString();
   const esp=s.q.filter(x=>x.estado==='ESPERA').sort((a,b)=>a.llegada<b.llegada?-1:1);
@@ -144,7 +156,7 @@ function viewPanel(){
   const libres=[];for(let i=1;i<=s.n;i++)if(!ocup(i))libres.push(i);
   const fin=s.q.filter(x=>x.estado==='FINALIZADO'&&new Date(x.llegada).toDateString()===hoy).length;
   $('#app').innerHTML=`${tabs()}<div class="bar">
-    <b>${esp.length} en espera · ${s.n-libres.length} andenes ocupados · ${fin} finalizados hoy</b>
+    <b>${esp.length} en espera · ${s.n-libres.length} andenes ocupados · ${fin} finalizados hoy${(()=>{const n=s.q.filter(x=>x.estado==='ASIGNADO'&&x.asignado&&mins(x.asignado)>=UMBRAL).length;return n?` · <span class="warn">${n} con más de ${UMBRAL} min en carga</span>`:''})()}</b>
     <span style="flex:1"></span>
     <label for="nan" style="margin:0;font-weight:400">Andenes</label><input type="number" id="nan" min="1" max="60" value="${s.n}">
     <button class="btn sec" style="width:auto;margin:0" id="csv">Descargar CSV</button></div>
@@ -156,7 +168,7 @@ function viewPanel(){
       <button type="button" data-a="${r.id}" ${libres.length?'':'disabled'}>Asignar</button></div></div>`).join('')
     :'<div class="empty">No hay conductores en espera. Los registros nuevos aparecen aquí.</div>'}</section>
     <section><h2>Andenes</h2><p class="sub">Al terminar la carga, avise al conductor y luego libere el andén.</p><div class="dock">
-    ${Array.from({length:s.n},(_,i)=>{const o=ocup(i+1);return o?`<div class="d busy"><b>${i+1}</b><span class="st">OCUPADO</span><span>${esc(o.tractor)} / ${esc(o.rampla)}</span><span>CT ${esc(o.region)}</span>${o.estado==='CULMINADA'?`${o.recibido?`<span class="rc">✔ RECIBIDO ${hora(o.recibido)}</span>`:`<span class="av">AVISO ENVIADO · SIN CONFIRMAR</span>`}<button type="button" data-l="${o.id}">Liberar</button>`:`<button type="button" data-c="${o.id}">Carga culminada</button><button type="button" class="lnk" data-l="${o.id}">Liberar sin aviso</button>`}</div>`:`<div class="d free"><b>${i+1}</b><span class="st">LIBRE</span></div>`}).join('')}
+    ${Array.from({length:s.n},(_,i)=>{const o=ocup(i+1);return o?`<div class="d busy"><b>${i+1}</b><span class="st">OCUPADO</span><span>${esc(o.tractor)} / ${esc(o.rampla)}</span><span>CT ${esc(o.region)}</span>${tiempoCarga(o)}${o.estado==='CULMINADA'?`${o.recibido?`<span class="rc">✔ RECIBIDO ${hora(o.recibido)}</span>`:`<span class="av">AVISO ENVIADO · SIN CONFIRMAR</span>`}<button type="button" data-l="${o.id}">Liberar</button>`:`<button type="button" data-c="${o.id}">Carga culminada</button><button type="button" class="lnk" data-l="${o.id}">Liberar sin aviso</button>`}</div>`:`<div class="d free"><b>${i+1}</b><span class="st">LIBRE</span></div>`}).join('')}
     </div></section></div>`;
   bindTabs();
   document.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{
@@ -173,7 +185,22 @@ function viewPanel(){
 }
 
 /* ---------- Registros (control de datos) ---------- */
-let tab='op', regRows=[], rf={d1:'',d2:'',q:''};
+let tab='op', regRows=[], rf={d1:'',d2:'',q:''}, memAl={};
+const UMBRAL=30; // minutos: verde < 30, amarillo 30-59, rojo 60 o más; la alerta suena cada 30 min
+const semaf=m=>m<UMBRAL?'g':m<UMBRAL*2?'y':'r';
+const semT=m=>m<UMBRAL?'Dentro del tiempo':m<UMBRAL*2?'Atención':'Crítico';
+function slaCarga(r){
+  let m=dur(r.asignado,r.culminada),enc=false;
+  if(m==null&&r.estado==='ASIGNADO'&&r.asignado){m=mins(r.asignado);enc=true}
+  if(m==null)return '—';
+  return `<i class="sem ${semaf(m)}" title="${semT(m)}"></i>${fmtDur(m)}${enc?' (en curso)':''}`}
+function semCsv(r){const m=dur(r.asignado,r.culminada);return m==null?'':m<UMBRAL?'VERDE':m<UMBRAL*2?'AMARILLO':'ROJO'}
+function tiempoCarga(o){
+  if(o.estado==='CULMINADA'){const m=dur(o.asignado,o.culminada);return m==null?'':`<span class="tc"><i class="sem ${semaf(m)}"></i>Carga: ${fmtDur(m)}</span>`}
+  if(!o.asignado)return '';
+  const m=mins(o.asignado);return `<span class="tc ${m>=UMBRAL?'warn':''}"><i class="sem ${semaf(m)}"></i>${fmtDur(m)} en carga</span>`}
+function alGet(){try{return JSON.parse(localStorage.getItem('andenes_alertas'))||{}}catch(e){return memAl}}
+function alSet(o){memAl=o;try{localStorage.setItem('andenes_alertas',JSON.stringify(o))}catch(e){}}
 const ymd=d=>{d=new Date(d);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const hm=(i,sec)=>i?new Date(i).toLocaleTimeString('es-CL',sec?{hour:'2-digit',minute:'2-digit',second:'2-digit'}:{hour:'2-digit',minute:'2-digit'}):'';
 const dur=(a,b)=>{if(!a||!b)return null;const m=Math.round((new Date(b)-new Date(a))/60000);return m<0?null:m};
@@ -188,7 +215,7 @@ function filtReg(){const q=rf.q.trim().toUpperCase();return regRows.filter(r=>!q
 function pintaReg(){
   const t=$('#rtab');if(!t)return;const rows=filtReg();
   const avg=f=>{const v=rows.map(f).filter(x=>x!=null);return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length):null};
-  t.innerHTML=rows.length?`<p class="sub">${rows.length} registro(s) · Promedio SLA Asignación: <b>${fmtDur(avg(r=>dur(r.llegada,r.asignado)))||'—'}</b> · Promedio SLA Carga: <b>${fmtDur(avg(r=>dur(r.asignado,r.culminada)))||'—'}</b></p><div class="tw"><table><thead><tr><th>Fecha</th><th>Nombres</th><th>Apellidos</th><th>RUT / Doc.</th><th>PPU tractor</th><th>PPU rampla</th><th>CT</th><th>Andén</th><th>Hora registro</th><th>Hora asignación</th><th>Hora carga finalizada</th><th>Hora cierre</th><th>Estado</th><th>SLA Asignación</th><th>SLA Carga</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${fch(r.llegada)}</td><td>${esc(r.nombres)}</td><td>${esc(r.apellidos)}</td><td>${esc(r.doc)}</td><td>${esc(r.tractor)}</td><td>${esc(r.rampla)}</td><td>${esc(r.region)}</td><td>${r.anden||'—'}</td><td>${hm(r.llegada)||'—'}</td><td>${hm(r.asignado)||'—'}</td><td>${hm(r.culminada)||'—'}</td><td>${hm(r.liberado)||'—'}</td><td>${EST[r.estado]||esc(r.estado)}</td><td>${fmtDur(dur(r.llegada,r.asignado))||'—'}</td><td>${fmtDur(dur(r.asignado,r.culminada))||'—'}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No hay registros en ese rango.</div>'}
+  t.innerHTML=rows.length?`<p class="sub">${rows.length} registro(s) · Promedio SLA Asignación: <b>${fmtDur(avg(r=>dur(r.llegada,r.asignado)))||'—'}</b> · Promedio SLA Carga: <b>${fmtDur(avg(r=>dur(r.asignado,r.culminada)))||'—'}</b><br><span class="leg">Semáforo SLA Carga: <i class="sem g"></i>menos de ${UMBRAL} min<i class="sem y"></i>${UMBRAL} a ${UMBRAL*2-1} min<i class="sem r"></i>${UMBRAL*2} min o más</span></p><div class="tw"><table><thead><tr><th>Fecha</th><th>Nombres</th><th>Apellidos</th><th>RUT / Doc.</th><th>PPU tractor</th><th>PPU rampla</th><th>CT</th><th>Andén</th><th>Hora registro</th><th>Hora asignación</th><th>Hora carga finalizada</th><th>Hora cierre</th><th>Estado</th><th>SLA Asignación</th><th>SLA Carga</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${fch(r.llegada)}</td><td>${esc(r.nombres)}</td><td>${esc(r.apellidos)}</td><td>${esc(r.doc)}</td><td>${esc(r.tractor)}</td><td>${esc(r.rampla)}</td><td>${esc(r.region)}</td><td>${r.anden||'—'}</td><td>${hm(r.llegada)||'—'}</td><td>${hm(r.asignado)||'—'}</td><td>${hm(r.culminada)||'—'}</td><td>${hm(r.liberado)||'—'}</td><td>${EST[r.estado]||esc(r.estado)}</td><td>${fmtDur(dur(r.llegada,r.asignado))||'—'}</td><td>${slaCarga(r)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No hay registros en ese rango.</div>'}
 async function cargarReg(){
   try{
     if(API){const r=await jsonp({a:'hist',d:JSON.stringify({desde:rf.d1,hasta:rf.d2})});if(r.error)throw new Error(r.error);regRows=r.q}
@@ -208,8 +235,8 @@ function viewReg(){
   $('#bgo').onclick=()=>{rf.d1=$('#d1').value||ymd(Date.now());rf.d2=$('#d2').value||rf.d1;rf.q=$('#bq').value;cargarReg()};
   $('#bq').oninput=()=>{rf.q=$('#bq').value;pintaReg()};
   $('#bcsv').onclick=()=>{
-    const h=['FECHA','NOMBRES','APELLIDOS','TIPO DOC','RUT / DOCUMENTO','PPU TRACTOR','PPU RAMPLA','CT','ANDÉN','HORA REGISTRO','HORA ASIGNACIÓN','HORA CARGA FINALIZADA','HORA CIERRE','ESTADO','SLA ASIGNACIÓN (MIN)','SLA CARGA (MIN)'];
-    const rows=filtReg().map(r=>[fch(r.llegada),r.nombres,r.apellidos,r.tipoDoc,r.doc,r.tractor,r.rampla,r.region,r.anden||'',hm(r.llegada,1),hm(r.asignado,1),hm(r.culminada,1),hm(r.liberado,1),EST[r.estado]||r.estado,dm(r.llegada,r.asignado),dm(r.asignado,r.culminada)].map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(','));
+    const h=['FECHA','NOMBRES','APELLIDOS','TIPO DOC','RUT / DOCUMENTO','PPU TRACTOR','PPU RAMPLA','CT','ANDÉN','HORA REGISTRO','HORA ASIGNACIÓN','HORA CARGA FINALIZADA','HORA CIERRE','ESTADO','SLA ASIGNACIÓN (MIN)','SLA CARGA (MIN)','SEMÁFORO SLA CARGA'];
+    const rows=filtReg().map(r=>[fch(r.llegada),r.nombres,r.apellidos,r.tipoDoc,r.doc,r.tractor,r.rampla,r.region,r.anden||'',hm(r.llegada,1),hm(r.asignado,1),hm(r.culminada,1),hm(r.liberado,1),EST[r.estado]||r.estado,dm(r.llegada,r.asignado),dm(r.asignado,r.culminada),semCsv(r)].map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(','));
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+[h.join(','),...rows].join('\n')],{type:'text/csv'}));a.download='registros-andenes-'+rf.d1+'_'+rf.d2+'.csv';a.click()};
   cargarReg();
 }
@@ -239,6 +266,9 @@ function alerta(){
   const rc=S.q.filter(x=>x.recibido).map(x=>x.id);
   if(recSeen&&rc.some(i=>!recSeen.has(i))){beep();navigator.vibrate&&navigator.vibrate([200,100,200])}
   recSeen=new Set(rc);
+  const al=alGet();let sonar=false;
+  S.q.filter(x=>x.estado==='ASIGNADO'&&x.asignado).forEach(x=>{const k=Math.floor(mins(x.asignado)/UMBRAL);if(k>=1&&(al[x.id]||0)<k){al[x.id]=k;sonar=true}});
+  if(sonar){alSet(al);tono(660,0,.25);tono(660,.4,.25);tono(660,.8,.25);navigator.vibrate&&navigator.vibrate([300,150,300,150,300]);document.title='(ALERTA CARGA) '+T}
   const ids=S.q.filter(x=>x.estado==='ESPERA').map(x=>x.id);
   if(seen&&ids.some(i=>!seen.has(i))){beep();navigator.vibrate&&navigator.vibrate([200,100,200]);document.title='(NUEVO CONDUCTOR) '+T}
   seen=new Set(ids)}
